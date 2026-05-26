@@ -2,14 +2,17 @@ import { QueueOperatingTable } from "@/components/crm/queue-operating-table";
 import { PageHeader } from "@/components/crm/page-header";
 import { Card } from "@/components/ui/card";
 import { queueStats } from "@/lib/crm-data";
+import { getQueueLeads } from "@/lib/queue-service";
 
-export default function QueuePage() {
+export default async function QueuePage() {
+  const leads = await getQueueLeads();
+
   return (
     <>
       <PageHeader
         eyebrow="My Queue"
         title="Fast lead operating room"
-        description="Search, filter, call, log outcomes, and move through gym-owner leads without bouncing between pages."
+        description="Search, filter, call, log outcomes, and move through real Supabase leads without bouncing between pages."
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -28,7 +31,7 @@ export default function QueuePage() {
         ))}
       </div>
 
-      <QueueOperatingTable />
+      <QueueOperatingTable leads={leads} />
     </>
   );
 }
