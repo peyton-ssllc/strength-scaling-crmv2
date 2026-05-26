@@ -22,7 +22,7 @@ export default async function ContactsPage() {
     <>
       <PageHeader
         eyebrow="Contacts"
-        title="Lead database"
+        title="Contacts database"
         description="Every imported gym lead, call status, source, and last touch in one searchable operating view."
       />
 
