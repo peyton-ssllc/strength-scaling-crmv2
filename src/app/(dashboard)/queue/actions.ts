@@ -1,22 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
-
-function createSupabaseAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
-  if (!serviceRoleKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
+import { createSupabaseAdminClient } from "@/lib/admin";
 
 function outcomeToStatus(outcome: string) {
   if (outcome === "Booked Meeting") return "meeting_booked";
@@ -77,15 +62,26 @@ export async function logQueueCall(input: {
     };
   }
 
+  const updatePayload: {
+    status: string;
+    last_contacted_at: string;
+    next_follow_up_at: string | null;
+    updated_at: string;
+    notes_summary?: string;
+  } = {
+    status: nextStatus,
+    last_contacted_at: new Date().toISOString(),
+    next_follow_up_at: nextFollowUpAt,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.note) {
+    updatePayload.notes_summary = input.note;
+  }
+
   const { error: leadError } = await supabase
     .from("leads")
-    .update({
-      status: nextStatus,
-      last_contacted_at: new Date().toISOString(),
-      next_follow_up_at: nextFollowUpAt,
-      notes_summary: input.note || undefined,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", input.leadId);
 
   if (leadError) {
