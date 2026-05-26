@@ -85,12 +85,10 @@ export function QueueOperatingTable({ leads }: { leads: DbQueueLead[] }) {
         return;
       }
 
-      setRows((current) => current.filter((lead) => lead.id !== selected.id));
+      const nextRows = rows.filter((lead) => lead.id !== selected.id);
+      setRows(nextRows);
 
-      const remaining = filteredRows.filter((lead) => lead.id !== selected.id);
-      const nextLead = remaining[0] ?? rows.find((lead) => lead.id !== selected.id);
-
-      if (nextLead) setSelectedId(nextLead.id);
+      if (nextRows[0]) setSelectedId(nextRows[0].id);
 
       setOutcome(queueOutcomes[0]);
       setNote("");
