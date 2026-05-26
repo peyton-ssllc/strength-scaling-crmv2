@@ -24,7 +24,7 @@ export default async function ContactsPage() {
     <>
       <PageHeader
         eyebrow="Contacts"
-        title="REAL CONTACTS DATABASE"
+        title="Contacts Database"
         description="This page is reading real imported leads from Supabase."
       />
 
