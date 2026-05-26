@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { PageHeader } from "@/components/crm/page-header";
@@ -22,16 +24,16 @@ export default async function ContactsPage() {
     <>
       <PageHeader
         eyebrow="Contacts"
-        title="Contacts database"
-        description="Every imported gym lead, call status, source, and last touch in one searchable operating view."
+        title="REAL CONTACTS DATABASE"
+        description="This page is reading real imported leads from Supabase."
       />
 
       <Card className="mb-4 p-4">
         <div className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 text-sm text-slate-400">
           <Search className="size-4" />
           <input
-            placeholder="Search is coming next. For now this table shows real Supabase leads."
-            className="min-w-0 flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-600"
+            placeholder={`${contacts.length} real contacts loaded from Supabase`}
+            className="min-w-0 flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-500"
             disabled
           />
         </div>
