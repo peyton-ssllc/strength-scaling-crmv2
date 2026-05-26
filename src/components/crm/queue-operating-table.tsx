@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   ArrowRight,
   Building2,
@@ -16,10 +16,12 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { logQueueCall } from "@/app/(dashboard)/queue/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { queueLeads, queueOutcomes, type QueueLead } from "@/lib/queue-data";
+import { queueOutcomes } from "@/lib/queue-data";
+import type { DbQueueLead } from "@/lib/queue-service";
 
 function statusClass(status: string) {
   if (status === "New") return "border-slate-400/20 bg-slate-300/10 text-slate-200";
@@ -30,26 +32,16 @@ function statusClass(status: string) {
   return "border-sky-300/20 bg-sky-300/10 text-sky-100";
 }
 
-function nextStatusFromOutcome(outcome: string) {
-  if (outcome === "Booked Meeting") return "Booked";
-  if (outcome === "Callback Requested") return "Callback";
-  if (outcome === "No Answer") return "No Answer";
-  if (outcome === "Left Voicemail") return "No Answer";
-  if (outcome === "Connected - Interested") return "Interested";
-  if (outcome === "Not Interested") return "Lost";
-  if (outcome === "Bad Number") return "Bad Data";
-  if (outcome === "Do Not Contact") return "DNC";
-  return "Called";
-}
-
-export function QueueOperatingTable() {
-  const [rows, setRows] = useState(queueLeads);
+export function QueueOperatingTable({ leads }: { leads: DbQueueLead[] }) {
+  const [rows, setRows] = useState(leads);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [dueOnly, setDueOnly] = useState(false);
   const [selectedId, setSelectedId] = useState(rows[0]?.id ?? "");
   const [outcome, setOutcome] = useState(queueOutcomes[0]);
   const [note, setNote] = useState("");
+  const [message, setMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const selected = rows.find((lead) => lead.id === selectedId) ?? rows[0];
 
@@ -77,35 +69,44 @@ export function QueueOperatingTable() {
   }
 
   function saveLogAndNext() {
-    const nextStatus = nextStatusFromOutcome(outcome);
+    if (!selected) return;
 
-    setRows((current) =>
-      current.map((lead) =>
-        lead.id === selected.id
-          ? {
-              ...lead,
-              status: nextStatus,
-              calls: lead.calls + 1,
-              due: outcome === "Callback Requested",
-              followUp:
-                outcome === "Callback Requested"
-                  ? "Tomorrow, 10:00 AM"
-                  : outcome === "Booked Meeting"
-                    ? "Meeting booked"
-                    : "In 2 business days",
-              lastTouch: outcome,
-              notes: note || lead.notes,
-            }
-          : lead,
-      ),
+    setMessage("");
+
+    startTransition(async () => {
+      const result = await logQueueCall({
+        leadId: selected.id,
+        outcome,
+        note,
+      });
+
+      if (!result.ok) {
+        setMessage(result.message ?? "Could not save call.");
+        return;
+      }
+
+      setRows((current) => current.filter((lead) => lead.id !== selected.id));
+
+      const remaining = filteredRows.filter((lead) => lead.id !== selected.id);
+      const nextLead = remaining[0] ?? rows.find((lead) => lead.id !== selected.id);
+
+      if (nextLead) setSelectedId(nextLead.id);
+
+      setOutcome(queueOutcomes[0]);
+      setNote("");
+      setMessage("Call logged in Supabase.");
+    });
+  }
+
+  if (!selected) {
+    return (
+      <Card className="p-8 text-center">
+        <h2 className="text-xl font-semibold text-white">No queue leads found</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Add leads in Supabase or import a CSV to start calling.
+        </p>
+      </Card>
     );
-
-    const currentIndex = filteredRows.findIndex((lead) => lead.id === selected.id);
-    const nextLead = filteredRows[currentIndex + 1] ?? filteredRows[0] ?? rows[0];
-
-    if (nextLead) setSelectedId(nextLead.id);
-    setOutcome(queueOutcomes[0]);
-    setNote("");
   }
 
   return (
@@ -184,7 +185,9 @@ export function QueueOperatingTable() {
                 <button
                   onClick={() => setSelectedId(lead.id)}
                   className={`size-4 rounded-full border ${
-                    active ? "border-sky-300 bg-sky-300 shadow-[0_0_18px_rgba(46,175,255,0.45)]" : "border-sky-300/60"
+                    active
+                      ? "border-sky-300 bg-sky-300 shadow-[0_0_18px_rgba(46,175,255,0.45)]"
+                      : "border-sky-300/60"
                   }`}
                   aria-label={`Select ${lead.business}`}
                 />
@@ -294,16 +297,18 @@ export function QueueOperatingTable() {
             >
               Focus Mode
             </Link>
-            <Button onClick={saveLogAndNext}>
-              Save & Next
+            <Button onClick={saveLogAndNext} disabled={isPending}>
+              {isPending ? "Saving..." : "Save & Next"}
               <ArrowRight className="size-4" />
             </Button>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-300/15 bg-emerald-300/10 p-3 text-xs text-emerald-100">
-            <CheckCircle2 className="size-4" />
-            Logs update locally now. Next phase wires this to Supabase.
-          </div>
+          {message ? (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-300/15 bg-emerald-300/10 p-3 text-xs text-emerald-100">
+              <CheckCircle2 className="size-4" />
+              {message}
+            </div>
+          ) : null}
         </div>
       </Card>
     </div>
