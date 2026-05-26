@@ -89,3 +89,34 @@ export async function getContacts(): Promise<ContactLead[]> {
     lastContacted: readableDate(lead.last_contacted_at),
   }));
 }
+export async function getContactById(id: string): Promise<ContactLead | null> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("leads")
+    .select(
+      "id, business_name, contact_name, owner_name, phone, email, city, state, status, score, lead_source, last_contacted_at"
+    )
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    business: data.business_name,
+    contact: data.contact_name || data.owner_name || "",
+    phone: data.phone || "",
+    email: data.email || "",
+    city: data.city || "",
+    state: data.state || "",
+    status: readableStatus(data.status),
+    score: data.score || 0,
+    source: data.lead_source || "",
+    lastContacted: data.last_contacted_at
+      ? new Date(data.last_contacted_at).toLocaleDateString()
+      : "",
+  };
+}
